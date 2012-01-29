@@ -1,0 +1,5 @@
+c:\users\marshall\documents\visual studio 2010\Projects\WebKinect\WebKinect\obj\Debug\ResolveAssemblyReference.cache
+c:\users\marshall\documents\visual studio 2010\Projects\WebKinect\WebKinect\bin\WebKinect.dll
+c:\users\marshall\documents\visual studio 2010\Projects\WebKinect\WebKinect\bin\WebKinect.pdb
+c:\users\marshall\documents\visual studio 2010\Projects\WebKinect\WebKinect\obj\Debug\WebKinect.dll
+c:\users\marshall\documents\visual studio 2010\Projects\WebKinect\WebKinect\obj\Debug\WebKinect.pdb
