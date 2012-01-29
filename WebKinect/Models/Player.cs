@@ -1,18 +1,19 @@
 ﻿using System;
 using System.Collections.Generic;
 using WebKinect.Utils;
-
+using System.Collections;
+using System.Collections.Concurrent;
 using Microsoft.Research.Kinect.Nui;
 
+using System.Linq;
+using System.Threading;
 using System.Windows;
 using System.Diagnostics;
 
-namespace WebKinect
+namespace WebKinect.Models
 {
     public class Player
     {
-        private static Dictionary<int, Player> _players;
-
         public Player(int SkeletonSlot)
         {
             id = SkeletonSlot;
@@ -29,11 +30,15 @@ namespace WebKinect
 
             //brJoints = new SolidColorBrush(Color.FromRgb(iJointCols[iMixr[i]], iJointCols[iMixg[i]], iJointCols[iMixb[i]]));
             //brBones = new SolidColorBrush(Color.FromRgb(iBoneCols[iMixr[i]], iBoneCols[iMixg[i]], iBoneCols[iMixb[i]]));
-            lastUpdatedAt = DateTime.Now;
         }
 
+        public static ConcurrentBag<Player> Players;
+
+        #region properties
+        public ConcurrentStack<PointCloud> Clouds;
+        #endregion
+
         #region Instance Variables
-        public DateTime lastUpdatedAt;
         public bool isAlive = false;
 
         int colorId;
@@ -53,26 +58,23 @@ namespace WebKinect
         #endregion
 
         #region Finders
-        public static Player FindByIndex(int i)
-        {
-            if (_players == null) _players = new Dictionary<int, Player>();
-
-            if (!_players.ContainsKey(i)) return null;
-
-            return _players[i];
-        }
 
         public static Player FindOrCreateByIndex(int i)
         {
-            var p = FindByIndex(i);
+            if (Players == null)
+            {
+                Players = new ConcurrentBag<Player>();
+            }
+            var p = Players.ElementAtOrDefault(i);
 
             if (null == p)
             {
                 p = new Player(i);
-                _players[i] = p;
+                Players.Add(p);
             }
 
             return p;
+
         }
         #endregion
 
@@ -86,76 +88,57 @@ namespace WebKinect
 
         public void Update(SkeletonData data)
         {
-            lastUpdatedAt = DateTime.Now;
-
-            // Update player's bone and joint positions
-            if (data.Joints.Count > 0)
-            {
-                isAlive = true;
-
-                foreach (Joint joint in data.Joints)
+            
+                if (Clouds == null)
                 {
-                    Trace.WriteLine("Joint data found X:" + joint.Position.X.ToString());
-                    Trace.WriteLine(joint.ToString());
+                    Clouds = new ConcurrentStack<PointCloud>();
                 }
-                // Head, hands, feet (hit testing happens in order here)
-                //UpdateJointPosition(data.Joints, JointID.Head);
-                //UpdateJointPosition(data.Joints, JointID.ShoulderLeft);
-                //UpdateJointPosition(data.Joints, JointID.ShoulderCenter);
-                //UpdateJointPosition(data.Joints, JointID.ShoulderRight);
 
-                //UpdateJointPosition(data.Joints, JointID.ElbowLeft);
-                //UpdateJointPosition(data.Joints, JointID.ElbowRight);
-                //UpdateJointPosition(data.Joints, JointID.WristLeft);
-                //UpdateJointPosition(data.Joints, JointID.WristRight);
-                //UpdateJointPosition(data.Joints, JointID.HandLeft);
-                //UpdateJointPosition(data.Joints, JointID.HandRight);
+                TimeSpan t = (DateTime.UtcNow - new DateTime(1970, 1, 1));
+                //double timestamp = t.TotalMilliseconds;
 
-                //UpdateJointPosition(data.Joints, JointID.HipLeft);
-                //UpdateJointPosition(data.Joints, JointID.HipCenter);
-                //UpdateJointPosition(data.Joints, JointID.HipRight);
-                //UpdateJointPosition(data.Joints, JointID.KneeLeft);
-                //UpdateJointPosition(data.Joints, JointID.KneeRight);
-                //UpdateJointPosition(data.Joints, JointID.AnkleLeft);
-                //UpdateJointPosition(data.Joints, JointID.AnkleRight);
-                //UpdateJointPosition(data.Joints, JointID.FootLeft);
-                //UpdateJointPosition(data.Joints, JointID.FootRight);
 
-                //// Hands and arms
-                //UpdateBonePosition(data.Joints, JointID.HandRight, JointID.WristRight);
-                //UpdateBonePosition(data.Joints, JointID.WristRight, JointID.ElbowRight);
-                //UpdateBonePosition(data.Joints, JointID.ElbowRight, JointID.ShoulderRight);
+                // Update player's bone and joint positions
+                if (data.Joints.Count > 0)
+                {
+                    var c = new PointCloud() { Time = t.TotalMilliseconds, Positions = new ConcurrentBag<Position>() };
+                    Trace.WriteLine("Joint");
+                    foreach (Joint j in data.Joints)
+                    {
 
-                //UpdateBonePosition(data.Joints, JointID.HandLeft, JointID.WristLeft);
-                //UpdateBonePosition(data.Joints, JointID.WristLeft, JointID.ElbowLeft);
-                //UpdateBonePosition(data.Joints, JointID.ElbowLeft, JointID.ShoulderLeft);
+                        if (j.TrackingState == JointTrackingState.Tracked)
+                        {
+                            
 
-                //// Head and Shoulders
-                //UpdateBonePosition(data.Joints, JointID.ShoulderCenter, JointID.Head);
-                //UpdateBonePosition(data.Joints, JointID.ShoulderLeft, JointID.ShoulderCenter);
-                //UpdateBonePosition(data.Joints, JointID.ShoulderCenter, JointID.ShoulderRight);
+                            var p = new Position
+                            {
+                                X = j.Position.X,
+                                Y = j.Position.Y,
+                                Z = j.Position.Z,
+                                W = j.Position.W,
+                                Name = Enum.GetName(typeof(JointID), j.ID)
+                            };
+                            c.Positions.Add(p);
+                        }
+                    }
 
-                //// Legs
-                //UpdateBonePosition(data.Joints, JointID.HipLeft, JointID.KneeLeft);
-                //UpdateBonePosition(data.Joints, JointID.KneeLeft, JointID.AnkleLeft);
-                //UpdateBonePosition(data.Joints, JointID.AnkleLeft, JointID.FootLeft);
+                    if (c.Positions.Count > 0 && 
+                            (Clouds.Count() == 0 || Math.Abs(Clouds.First().Time - t.TotalMilliseconds) > 250)
+                        )
+                        Clouds.Push(c);
 
-                //UpdateBonePosition(data.Joints, JointID.HipRight, JointID.KneeRight);
-                //UpdateBonePosition(data.Joints, JointID.KneeRight, JointID.AnkleRight);
-                //UpdateBonePosition(data.Joints, JointID.AnkleRight, JointID.FootRight);
+                    PointCloud extra;
 
-                //UpdateBonePosition(data.Joints, JointID.HipLeft, JointID.HipCenter);
-                //UpdateBonePosition(data.Joints, JointID.HipCenter, JointID.HipRight);
+                    while (Clouds.Count() > 120)
+                        Clouds.TryPop(out extra);
+                }
+                else
+                {
+                    isAlive = false;
+                }
 
-                //// Spine
-                //UpdateBonePosition(data.Joints, JointID.HipCenter, JointID.ShoulderCenter);
-            }
-            else
-            {
-                isAlive = false;
-            }
+            
         }
-
         //private void UpdateSegmentPosition(JointID j1, JointID j2, Segment seg)
         //{
         //    var bone = new Bone(j1, j2);

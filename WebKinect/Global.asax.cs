@@ -4,7 +4,7 @@ using System.Linq;
 using System.Web;
 using System.Web.Mvc;
 using System.Web.Routing;
-using WebKinect;
+using WebKinect.Models;
 using System.Diagnostics;
 
 namespace WebKinect
@@ -34,12 +34,12 @@ namespace WebKinect
             AreaRegistration.RegisterAllAreas();
 
             RegisterRoutes(RouteTable.Routes);
-            WebKinect.Kinect.Init();
+            Kinect.Init();
         }
 
         protected void Application_End()
         {
-            WebKinect.Kinect.Shutdown();
+            Kinect.Shutdown();
         }
     }
 }

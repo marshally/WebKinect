@@ -4,14 +4,14 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using WebKinect;
-//using System.Linq;
+using System.Linq;
 //using System.Windows;
 //using System.Windows.Documents;
 //using System.Windows.Input;
 using Microsoft.Research.Kinect.Nui;
 //using Microsoft.Samples.Kinect.WpfViewers;
 
-namespace WebKinect
+namespace WebKinect.Models
 {
     public class Kinect
     {
@@ -27,7 +27,11 @@ namespace WebKinect
 
         public static Runtime FindByInstanceName(String s)
         {
-            return _sensors[s];
+            Runtime r;
+            if (_sensors.TryGetValue(s, out r))
+                return r;
+            else
+                return null;
         }
         #endregion
 
@@ -42,6 +46,7 @@ namespace WebKinect
 
             foreach (var kinect in Runtime.Kinects)
             {
+                Trace.WriteLine(kinect.InstanceName);
                 _sensors[kinect.InstanceName] = kinect;
                 kinect.Initialize(RuntimeOptions.UseColor | RuntimeOptions.UseDepthAndPlayerIndex | RuntimeOptions.UseSkeletalTracking);
                 kinect.SkeletonFrameReady += new EventHandler<SkeletonFrameReadyEventArgs>(SkeletonsReady);
@@ -100,30 +105,32 @@ namespace WebKinect
 
         private static void SkeletonsReady(object sender, SkeletonFrameReadyEventArgs e)
         {
-            // SO the Kinect throws this event like 15 times per second or something. whether it has actual data or not.
-            SkeletonFrame skeletonFrame = e.SkeletonFrame;
+            
 
-            //KinectSDK TODO: This nullcheck shouldn't be required. 
-            //Unfortunately, this version of the Kinect Runtime will continue to fire some skeletonFrameReady events after the Kinect USB is unplugged.
-            if (skeletonFrame == null)
-            {
-                return;
-            }
+                // SO the Kinect throws this event like 15 times per second or something. whether it has actual data or not.
+                SkeletonFrame skeletonFrame = e.SkeletonFrame;
 
-            int i = 0;
-
-            foreach (SkeletonData data in skeletonFrame.Skeletons)
-            {
-                // this conditional basically says only do it if a player is actually being tracked.
-                // stupid API always returns 6 player objects though. whether they are tracked or not.
-                if (SkeletonTrackingState.Tracked == data.TrackingState)
+                //KinectSDK TODO: This nullcheck shouldn't be required. 
+                //Unfortunately, this version of the Kinect Runtime will continue to fire some skeletonFrameReady events after the Kinect USB is unplugged.
+                if (skeletonFrame == null)
                 {
-                    Trace.WriteLine("Tracked!");
-                    var player = Player.FindOrCreateByIndex(i);
-                    player.Update(data);
+                    return;
                 }
-                i++;
-            }
+
+                int i = 0;
+
+                foreach (SkeletonData data in skeletonFrame.Skeletons)
+                {
+                    // this conditional basically says only do it if a player is actually being tracked.
+                    // stupid API always returns 6 player objects though. whether they are tracked or not.
+                    if (SkeletonTrackingState.Tracked == data.TrackingState)
+                    {
+                        Trace.WriteLine("Tracked!");
+                    }
+                    Player.FindOrCreateByIndex(i).Update(data);
+                    i++;
+                }
+            
         }
         #endregion
 

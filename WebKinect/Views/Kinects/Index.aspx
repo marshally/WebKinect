@@ -8,7 +8,7 @@
 </head>
 <body>
     <div>
-    
+    Id: <%=ViewData["Message"] %>
     </div>
 </body>
 </html>

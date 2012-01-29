@@ -78,6 +78,8 @@
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
     <Compile Include="Models\AccountModels.cs" />
+    <Compile Include="Models\PointCloud.cs" />
+    <Compile Include="Models\Position.cs" />
     <Compile Include="Models\Util.cs" />
     <Compile Include="Models\Kinect.cs" />
     <Compile Include="Models\Player.cs" />
